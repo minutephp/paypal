@@ -1,0 +1,4 @@
+<?php
+
+$options = getopt("", ['operation:', 'install-dir:', 'vendor-dir:']);
+print_r($options);
