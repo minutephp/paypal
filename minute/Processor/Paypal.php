@@ -53,7 +53,7 @@ namespace Minute\Processor {
                 }
 
                 $common = ['business' => $config['email'], 'currency_code' => 'USD', 'no_shipping' => '1', 'no_note' => '1', 'cpp_headerback_color' => 'FFFFFF',
-                           'rm' => '0', 'notify_url' => $urls['ipn'], 'return' => $urls['pdt'], 'cancel_return' => $urls['cancel'],
+                           'rm' => '0', 'notify_url' => $urls['ipn'], 'return' => $urls['pdt'], 'cancel_return' => $urls['cancel'] ?? '/pricing',
                            'cpp_headerborder_color' => 'FFFFFF', 'submit' => 'Pay Using PayPal >>'];
 
                 if ($headerImage = $config['header_image'] ?? '') {
