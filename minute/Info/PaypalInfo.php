@@ -14,7 +14,7 @@ namespace Minute\Info {
                 $event->setFields([
                     'email' => ['type' => 'email', 'label' => 'Paypal email'],
                     'auth_token' => ['label' => 'Authorization token', 'hint' => "You can find the auth_token in Paypal's merchant settings"],
-                    'header_image' => ['type' => 'url', 'label' => 'Header image', 'hint' => 'Image shown on top of checkout page (on paypal.com)'],
+                    'header_image' => ['type' => 'url', 'label' => 'Header image', 'hint' => 'Image shown on top of checkout page (750px x 90px)'],
                     'debug' => ['label' => 'Debug mode', 'hint' => "Type 'true' (without quotes) to enable debug mode (only for testing)"],
                 ]);
             }
