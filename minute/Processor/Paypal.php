@@ -4,6 +4,7 @@
  * Date: 10/15/2016
  * Time: 3:07 AM
  */
+
 namespace Minute\Processor {
 
     use Illuminate\Support\Str;
@@ -11,6 +12,7 @@ namespace Minute\Processor {
     use Minute\Crypto\JwtEx;
     use Minute\Error\ProcessorError;
     use Minute\Event\ProcessorPaymentEvent;
+    use Minute\File\TmpDir;
     use Minute\Interfaces\PaymentProcessor;
 
     class Paypal implements PaymentProcessor {
@@ -24,46 +26,66 @@ namespace Minute\Processor {
          * @var JwtEx
          */
         private $jwt;
+        /**
+         * @var TmpDir
+         */
+        private $tmpDir;
 
         /**
          * Paypal constructor.
          *
          * @param Config $config
          * @param JwtEx $jwt
+         * @param TmpDir $tmpDir
          */
-        public function __construct(Config $config, JwtEx $jwt) {
+        public function __construct(Config $config, JwtEx $jwt, TmpDir $tmpDir) {
             $this->config = $config;
             $this->jwt    = $jwt;
+            $this->tmpDir = $tmpDir;
         }
 
         public function checkout(ProcessorPaymentEvent $event) {
             if ($event->getProcessor() === 'paypal') {
-                $payment = $event->getPayment();
-                $item_id = $event->getOrderId();
-                $vars    = $this->getPaymentVars($payment);
-                $config  = $this->config->get(self::PAYPAL_KEY);
-                $urls    = ['pdt' => '/processor/paypal/pdt', 'ipn' => '/processor/paypal/ipn'];
+                $payment  = $event->getPayment();
+                $item_id  = $event->getOrderId();
+                $vars     = $this->getPaymentVars($payment);
+                $config   = $this->config->get(self::PAYPAL_KEY);
+                $host     = $this->config->getPublicVars('host');
+                $debug    = $config['debug'] == 'true';
+                $fallback = $this->jwt->encode((object) ['tx' => 'FREE-' . Str::random(8), 'item_number' => $item_id]);
+                $urls     = [
+                    'pdt' => "$host/processor/paypal/pdt?hash=$fallback&",
+                    'ipn' => "$host/processor/paypal/ipn?item_number=$item_id&",
+                    'cancel' => "$host/pricing"
+                ];
 
                 if (empty($config['email'])) {
                     throw new ProcessorError("Paypal email is not configured. Please configure this from admin first.");
                 }
 
-                if (isset($vars['a1']) && ($vars['a1'] == 0) && !empty($vars['p1']) && !empty($vars['t1'])) { //work around for free trial (since paypal doesn't return tx)
-                    $urls['pdt'] = sprintf('%s?hash=%s', $urls['pdt'], $this->jwt->encode((object) ['tx' => 'FREE-' . Str::random(8), 'item_number' => $item_id]));
-                }
-
                 $common = ['business' => $config['email'], 'currency_code' => 'USD', 'no_shipping' => '1', 'no_note' => '1', 'cpp_headerback_color' => 'FFFFFF',
-                           'rm' => '0', 'notify_url' => $urls['ipn'], 'return' => $urls['pdt'], 'cancel_return' => $urls['cancel'] ?? '/pricing',
+                           'rm' => '0', 'notify_url' => $urls['ipn'], 'return' => $urls['pdt'], 'cancel_return' => $urls['cancel'],
                            'cpp_headerborder_color' => 'FFFFFF', 'submit' => 'Pay Using PayPal >>'];
 
                 if ($headerImage = $config['header_image'] ?? '') {
                     $common['cpp_header_image'] = $headerImage;
                 }
 
-                $vars  = array_merge($common, $vars, ['item_name' => $event->getItemName(), 'item_number' => $item_id]);
-                $redir = sprintf('https://www.paypal.com/cgi-bin/webscr?%s', http_build_query($vars));
+                if ($debug) {
+                    $vars['notify_url'] = 'https://requestb.in/11lhids1';
+                    $vars['business']   = preg_replace('/@/', '-seller@', $config['email'], 1);
+                    $vars['email']      = preg_replace('/@/', '-buyer@', $config['email'], 1);
+                }
 
-                //die($redir);
+                $vars  = array_merge($common, $vars, ['item_name' => $event->getItemName(), 'item_number' => $item_id]);
+                $redir = sprintf('https://www.%spaypal.com/cgi-bin/webscr?%s', $debug ? 'sandbox.' : '', http_build_query($vars));
+
+                if ($debug) {
+                    $file = sprintf('%s/%s (%s).php', $this->tmpDir->getTempDir('paypal'), $event->getItemName(), date('d-M-Y'));
+
+                    file_put_contents($file, '<?' . "php\n\$pp = " . var_export($vars, true) . ";\n//IPN: https://requestb.in/11lhids1?inspect");
+                }
+
                 $event->setUrl($redir);
             }
         }

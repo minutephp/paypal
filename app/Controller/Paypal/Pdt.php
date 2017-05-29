@@ -41,7 +41,7 @@ namespace App\Controller\Paypal {
                     return new Redirection($url);
                 }
 
-                throw new PaymentError("Wallet should have intercepted it and cart should have redirected it before reaching here");
+                throw new PaymentError("Wallet plugin is not installed or disabled (it should redirected before reaching here).");
             }
 
             throw new PaymentError("Payment link in invalid. Our support team has been notified.", PaymentError::CRITICAL);

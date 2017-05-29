@@ -39,14 +39,8 @@ namespace Minute\Api {
             if ($tx = $request->getParameter('tx')) {
                 if ($at = $this->config->get(Paypal::PAYPAL_KEY . '/auth_token')) {
                     if ($this->debug()) {
-                        $info   = [];
+                        $info   = $request->getParameters();
                         $status = 'SUCCESS';
-
-                        foreach ($request->getParameters() as $key => $value) {
-                            if (strpos($key, '_') === 0) {
-                                $info[substr($key, 1)] = $value;
-                            }
-                        }
                     } else {
                         $client   = new Client(['verify' => $this->config->get('private/site/cert', false)]); //verify must point to a valid curl bundle
                         $query    = ['cmd' => '_notify-synch', 'tx' => $tx, 'at' => $at];
@@ -58,7 +52,7 @@ namespace Minute\Api {
                     }
 
                     if ($status === 'SUCCESS') {
-                        return array_merge($info, ['amount' => $info['mc_gross']]);
+                        return array_merge($info, ['amount' => $info['mc_gross'] ?: $info['amt']]);
                     }
                 } else {
                     throw new PaymentError("Paypal authentication token is not defined");
@@ -86,7 +80,7 @@ namespace Minute\Api {
         }
 
         private function debug() {
-            return ($this->config->get(Paypal::PAYPAL_KEY . '/debug') === 'true');
+            return ($this->config->get(Paypal::PAYPAL_KEY . '/debug') == 'true');
         }
     }
 }
