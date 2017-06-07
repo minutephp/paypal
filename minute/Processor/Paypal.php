@@ -72,7 +72,7 @@ namespace Minute\Processor {
                 }
 
                 if ($debug) {
-                    $vars['notify_url'] = 'https://requestb.in/11lhids1';
+                    $vars['notify_url'] = 'http://fac053e2.proxy.webhookapp.com/';
                     $vars['business']   = preg_replace('/@/', '-seller@', $config['email'], 1);
                     $vars['email']      = preg_replace('/@/', '-buyer@', $config['email'], 1);
                 }
@@ -83,7 +83,7 @@ namespace Minute\Processor {
                 if ($debug) {
                     $file = sprintf('%s/%s (%s).php', $this->tmpDir->getTempDir('paypal'), $event->getItemName(), date('d-M-Y'));
 
-                    file_put_contents($file, '<?' . "php\n\$pp = " . var_export($vars, true) . ";\n//IPN: https://requestb.in/11lhids1?inspect");
+                    file_put_contents($file, '<?' . "php\n\$pp = " . var_export($vars, true) . ";\n//IPN: https://webhookapp.com/hooks/fac053e2/requests");
                 }
 
                 $event->setUrl($redir);
